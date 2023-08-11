@@ -1,11 +1,30 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './App.css';
 
 function App() {
+  const uploadsDir = 'uploads/';
+  const [imagemSrc, setImagemSrc] = useState('');
+  const [imagemList, setImagemList] = useState([]);
   const [arquivoImagem, setArquivoImagem] = useState('');
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('selecionando');
   const imagemRef = useRef(null);
+
+  async function carregarListaImagens() {
+    try {
+      const response = await fetch('http://localhost/react-imagem/public/listar_uploads.php');
+      const result = await response.json();
+
+      if (!result) {
+         throw false;
+      }
+      
+      setImagemSrc(result[0]);
+      setImagemList(result);
+    } catch (error) {
+      throw new Error('Erro ao carregar imagens.');
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -23,6 +42,12 @@ function App() {
     }
   }
 
+  const trocarImagem = (e) => {
+    e.preventDefault();
+
+    setImagemSrc(imagemList.find((imagem) => imagem === e.target.text));
+  }
+
   function handleFileChange(e) {
     setError(null);
     setStatus('selecionando');
@@ -31,47 +56,41 @@ function App() {
   }
 
   async function submitForm(arquivo) {
-    return new Promise((resolve, reject) => {
-      if (arquivo && (arquivo.name.length > 0 && arquivo.size > 0)) {
+    if (arquivo && (arquivo.name.length > 0 && arquivo.size > 0)) {
+      try {
         const dadosForm = new FormData();
 
         dadosForm.append("arquivo", arquivo);
-        
-        fetch('http://localhost/react-imagem/public/upload.php', {
+      
+        const response = await fetch('http://localhost/react-imagem/public/upload.php', {
           method: 'POST',
           body: dadosForm
-        })
-          .then((res) => res.json())
-          .then((data) => console.log(data))
-          .catch((err) => console.error(err));
-        
-        resolve();
-      } else {
-        reject(new Error('Erro ao enviar o arquivo.'));
-      }
-    });
-    
-    /*
-    // Pretend it's hitting the network.
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        let arquivoOk = arquivo && (arquivo.name.length > 0 && arquivo.size > 0);
+        });
 
-        if (arquivoOk) {
-          resolve();
-        } else {
-          reject(new Error('Erro ao enviar o arquivo.'));
+        const result = await response.json();
+
+        if (!result) {
+           throw false;
         }
-      }, 1000);
-    });
-    */
+
+        setImagemSrc(result);
+      } catch (error) {
+        throw new Error('Erro ao enviar o arquivo.');
+      }
+    } else {
+        throw new Error('O arquivo parece estar com problema.');
+    }
   }
 
+  useEffect(() => {
+    carregarListaImagens();
+  }, []);
+  
   return (
     <>
-      {status === 'sucesso' &&
+      {imagemSrc.length > 0 &&
         <p>
-          <img src="vite.svg" alt="" />
+          <img src={uploadsDir + imagemSrc} style={{borderRadius: "1rem"}} alt="" width="300" />
         </p>
       }
 
@@ -100,6 +119,16 @@ function App() {
         <p className="erro" style={{ color: "red" }}>
           {error.message}
         </p>
+      }
+
+      {imagemList.length > 0 &&
+        <ul style={{textAlign: 'left'}}>
+          {imagemList.map((img, index) => {
+            if (imagemSrc !== img) {
+              return <li key={index}><a href="#" onClick={trocarImagem}>{img}</a></li>
+            }
+          })}
+        </ul>
       }
     </>
   );
