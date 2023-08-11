@@ -3,12 +3,13 @@ import './App.css';
 
 function App() {
   const uploadsDir = 'uploads/';
+  const [imagemLoading, setImagemLoading] = useState(true);
   const [imagemSrc, setImagemSrc] = useState('');
   const [imagemList, setImagemList] = useState([]);
   const [arquivoImagem, setArquivoImagem] = useState('');
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('selecionando');
-  const imagemRef = useRef(null);
+  const inputImagemRef = useRef(null);
 
   async function carregarListaImagens() {
     try {
@@ -16,11 +17,12 @@ function App() {
       const result = await response.json();
 
       if (!result) {
-         throw false;
+        throw false;
       }
-      
+
       setImagemSrc(result[0]);
       setImagemList(result);
+      setImagemLoading(false);
     } catch (error) {
       throw new Error('Erro ao carregar imagens.');
     }
@@ -28,6 +30,7 @@ function App() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setImagemLoading(true);
     setError(null);
     setStatus('enviando');
 
@@ -35,7 +38,7 @@ function App() {
       await submitForm(arquivoImagem);
       setStatus('sucesso');
       setArquivoImagem('');
-      imagemRef.current.value = null;
+      inputImagemRef.current.value = null;
     } catch (err) {
       setStatus('selecionando');
       setError(err);
@@ -45,10 +48,13 @@ function App() {
   const trocarImagem = (e) => {
     e.preventDefault();
 
+    setStatus('selecionando');
+    setError(null);
+    setImagemLoading(true);
     setImagemSrc(imagemList.find((imagem) => imagem === e.target.text));
   }
 
-  function handleFileChange(e) {
+  function handleFileInputChange(e) {
     setError(null);
     setStatus('selecionando');
 
@@ -61,7 +67,7 @@ function App() {
         const dadosForm = new FormData();
 
         dadosForm.append("arquivo", arquivo);
-      
+
         const response = await fetch('http://localhost/react-imagem/public/upload.php', {
           method: 'POST',
           body: dadosForm
@@ -70,7 +76,7 @@ function App() {
         const result = await response.json();
 
         if (!result) {
-           throw false;
+          throw false;
         }
 
         setImagemSrc(result);
@@ -78,28 +84,36 @@ function App() {
         throw new Error('Erro ao enviar o arquivo.');
       }
     } else {
-        throw new Error('O arquivo parece estar com problema.');
+      throw new Error('O arquivo parece estar com problema.');
     }
   }
 
   useEffect(() => {
     carregarListaImagens();
   }, []);
-  
+
   return (
     <>
-      {imagemSrc.length > 0 &&
-        <p>
-          <img src={uploadsDir + imagemSrc} style={{borderRadius: "1rem"}} alt="" width="300" />
-        </p>
-      }
+      <h2 style={{ display: imagemLoading ? "block" : "none" }}>🌀 Carregando imagem...</h2>
+      
+      <p style={{ width: "300px", height: "auto", margin: "auto", display: !imagemLoading && imagemSrc.length > 0 ? "block" : "none" }}>
+            <img
+              style={{ borderRadius: "1rem" }}
+              onLoad={() => setImagemLoading(false)}
+              src={uploadsDir + imagemSrc}
+              alt=""
+              width="300"
+            />
+      </p>
+      
+      <h2 style={{ display: !imagemLoading && imagemSrc.length <= 0 ? "block" : "none" }}>Imagem não carregada.</h2>
 
       <form id="form-imagem" onSubmit={handleSubmit}>
-        <label htmlFor="imagem" style={{ marginRight: "8px" }}>Selecione uma imagem:</label>
+        <label htmlFor="imagem-input" style={{ marginRight: "8px" }}>Selecione uma imagem:</label>
 
-        <input type="file" name="imagem" id="imagem"
-          ref={imagemRef}
-          onInput={handleFileChange}
+        <input type="file" name="imagem-input" id="imagem-input"
+          ref={inputImagemRef}
+          onInput={handleFileInputChange}
         />
 
         <p>
@@ -122,7 +136,7 @@ function App() {
       }
 
       {imagemList.length > 0 &&
-        <ul style={{textAlign: 'left'}}>
+        <ul style={{ textAlign: 'left' }}>
           {imagemList.map((img, index) => {
             if (imagemSrc !== img) {
               return <li key={index}><a href="#" onClick={trocarImagem}>{img}</a></li>
