@@ -14,9 +14,12 @@ if (!empty($_FILES["arquivo"]) && $_FILES["arquivo"]["error"] == UPLOAD_ERR_OK) 
   $path_parts = pathinfo(basename($_FILES["arquivo"]["name"]));
 
   $new_name = time() .".". $path_parts['extension'];
-  move_uploaded_file($tmp_name, "$uploads_dir/$new_name");
 
-  echo json_encode($new_name);
+  if (move_uploaded_file($tmp_name, "$uploads_dir/$new_name")) {
+    echo json_encode($new_name);
+  } else {
+    echo json_encode(false);
+  }
 } else {
   echo json_encode(false);
 }
